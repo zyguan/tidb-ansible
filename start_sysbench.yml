@@ -1,0 +1,68 @@
+---
+- hosts: pd_servers
+  tasks:
+  - name: gather facts
+    setup:
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+  - name: get datetime
+    command: "date +%m%d%H%M"
+    register: datetime
+  - name: create output directory
+    file: path=sysbench_out state=directory
+  - name: compact cluster
+    shell: "resources/bin/tikv-ctl --pd {{ hostvars[groups.pd_servers[0]].ansible_default_ipv4.address }}:{{ hostvars[groups.pd_servers[0]].pd_client_port }} compact-cluster"
+    args:
+      chdir: "{{ playbook_dir }}"
+
+- hosts: sysbench_servers
+  tasks:
+  - name: run sysbench
+    shell:
+      cmd: |
+        sh -xe >/tmp/sysbench_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}.out 2>&1 <<EOF
+
+        echo "\$(date) - prewarm start"
+
+        sysbench oltp_common \
+          --threads={{ oltp_tables }} \
+          --report-interval={{ report_interval }} \
+          --db-driver=mysql \
+          --mysql-db={{ mysql_db }} \
+          --mysql-host={{ tidb_host }} \
+          --mysql-port={{ tidb_port }} \
+          --mysql-user={{ mysql_user }} \
+          --mysql-password={{ mysql_password }} \
+          prewarm --tables={{ oltp_tables }} --table-size={{ oltp_table_size }}
+
+        echo "\$(date) - prewarm done"
+
+        sleep 60
+
+        echo "\$(date) - bench start"
+
+        sysbench {{ testname }} \
+          --threads={{ threads }} \
+          --time={{ time }} \
+          --rate=1666 \
+          --report-interval={{ report_interval }} \
+          --rand-type=uniform \
+          --rand-seed=\$RANDOM \
+          --db-driver=mysql \
+          --mysql-db={{ mysql_db }} \
+          --mysql-host={{ tidb_host }} \
+          --mysql-port={{ tidb_port }} \
+          --mysql-user={{ mysql_user }} \
+          --mysql-password={{ mysql_password }} \
+          run --tables={{ oltp_tables }} --table-size={{ oltp_table_size }}
+
+        EOF
+
+  - name: gather results
+    fetch:
+      src: "/tmp/sysbench_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}.out"
+      dest: "sysbench_out/{{ hostvars['localhost'].datetime.stdout }}/{{ inventory_hostname }}.out"
+      flat: yes

@@ -4,5 +4,5 @@
   include_role:
     name: systemd
   vars:
-    this_role_name: tidb
+    this_role_name: tidb_{{ tidb_port }}
     service_name: tidb-{{ tidb_port }}
