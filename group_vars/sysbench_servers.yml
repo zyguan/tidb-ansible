@@ -1,0 +1,16 @@
+---
+
+testname: oltp_read_write
+mysql_port: 4000
+mysql_user: root
+mysql_password: ''
+mysql_db: sbtest
+
+rand_type: special
+
+threads: 500
+time: 600
+report_interval: 15
+
+oltp_tables: 16
+oltp_table_size: 10000000

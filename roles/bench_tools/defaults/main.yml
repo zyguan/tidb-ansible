@@ -1,0 +1,2 @@
+---
+perf_tools_dir: "{{ deploy_dir }}/perf"

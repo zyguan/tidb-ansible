@@ -4,5 +4,5 @@
   include_role:
     name: systemd
   vars:
-    this_role_name: tikv
+    this_role_name: tikv_{{ tikv_port }}
     service_name: tikv-{{ tikv_port }}

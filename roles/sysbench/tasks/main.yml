@@ -1,0 +1,20 @@
+- name: Add sysbench repo
+  become: yes
+  shell: |
+    curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.rpm.sh | bash
+  ignore_errors: yes
+
+- name: Install sysbench
+  become: yes
+  package:
+    name: [sysbench-1.0.17, patch]
+    state: present
+    update_cache: no
+  ignore_errors: yes
+
+- name: Apply patch
+  become: yes
+  patch:
+    src: oltp_common-1.0.17.lua.patch
+    dest: /usr/share/sysbench/oltp_common.lua
+  ignore_errors: yes
