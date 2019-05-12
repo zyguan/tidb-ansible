@@ -1,0 +1,76 @@
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+  - name: get datetime
+    command: "date +%m%d%H%M"
+    register: datetime
+  - name: create output directory
+    file: path=profile_out state=directory
+
+- hosts: tikv_servers:tidb_servers
+  tasks:
+  - setup:
+  - name: create directory for saving profile data
+    file: "path=/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }} state=directory"
+
+- hosts: tikv_servers
+  tasks:
+  - name: get flamegraph
+    git:
+      repo: 'https://github.com/brendangregg/FlameGraph'
+      dest: /tmp/fg
+      update: no
+  - name: get fold-tikv-threads-perf
+    get_url:
+      url: https://raw.githubusercontent.com/pingcap/tidb-inspect-tools/master/tracing_tools/perf/fold-tikv-threads-perf.pl
+      timeout: 30
+      dest: /tmp/fg/fold-tikv-threads-perf.pl
+      mode: 0755
+  - name: perf tikv-server
+    shell: |
+      perf record -F 99 -g -p $(pgrep tikv-server) -o tikv_perf.data -- sleep 90
+      perf script -i tikv_perf.data | /tmp/fg/fold-tikv-threads-perf.pl | /tmp/fg/stackcollapse-perf.pl | /tmp/fg/flamegraph.pl > tikv_perf.svg
+    args:
+      chdir: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}"
+    ignore_errors: yes
+
+- hosts: tidb_servers
+  tasks:
+  - name: get tidb debug
+    get_url:
+      url: http://0.0.0.0:{{ tidb_status_port }}/debug/zip
+      timeout: 60
+      force: yes
+      dest: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}/tidb_debug.zip"
+    ignore_errors: yes
+
+- hosts: tikv_servers
+  tasks:
+  - local_action:
+      module: file
+      path: "profile_out/{{ hostvars['localhost'].datetime.stdout }}/tikv_{{ inventory_hostname }}"
+      state: directory
+  - name: collect profiles
+    synchronize:
+      mode: pull
+      src: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}/"
+      dest: "profile_out/{{ hostvars['localhost'].datetime.stdout }}/tikv_{{ inventory_hostname }}/"
+      delete: yes
+    ignore_errors: yes
+
+- hosts: tidb_servers
+  tasks:
+  - local_action:
+      module: file
+      path: "profile_out/{{ hostvars['localhost'].datetime.stdout }}/tidb_{{ inventory_hostname }}"
+      state: directory
+  - name: collect profiles
+    synchronize:
+      mode: pull
+      src: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}/"
+      dest: "profile_out/{{ hostvars['localhost'].datetime.stdout }}/tidb_{{ inventory_hostname }}/"
+      delete: yes
+    ignore_errors: yes

@@ -1,0 +1,4 @@
+---
+- hosts: sysbench_servers
+  roles:
+  - sysbench
