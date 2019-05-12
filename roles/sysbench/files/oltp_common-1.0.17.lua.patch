@@ -1,0 +1,15 @@
+68a69,70
+>    create_secondary_before_insert =
+>       {"Create a secondary index before insert data", true},
+198a201,207
+>    if sysbench.opt.create_secondary_before_insert and sysbench.opt.create_secondary then
+>       print(string.format("Creating a secondary index on 'sbtest%d'...",
+>               table_num))
+>       con:query(string.format("CREATE INDEX k_%d ON sbtest%d(k)",
+>               table_num, table_num))
+>    end
+> 
+235c244
+<    if sysbench.opt.create_secondary then
+---
+>    if not sysbench.opt.create_secondary_before_insert and sysbench.opt.create_secondary then
