@@ -31,8 +31,9 @@
       mode: 0755
   - name: perf tikv-server
     shell: |
-      perf record -F 99 -g -p $(pgrep tikv-server) -o tikv_perf.data -- sleep 90
-      perf script -i tikv_perf.data | /tmp/fg/fold-tikv-threads-perf.pl | /tmp/fg/stackcollapse-perf.pl | /tmp/fg/flamegraph.pl > tikv_perf.svg
+      perf record -F 99 -g $(pgrep -u $(whoami) tikv-server | awk '{print "-p "$1;}') -o tikv_perf.data -- sleep 90
+      perf script -i tikv_perf.data | /tmp/fg/fold-tikv-threads-perf.pl > tikv_perf.script
+      /tmp/fg/stackcollapse-perf.pl tikv_perf.script | /tmp/fg/flamegraph.pl > tikv_perf.svg
     args:
       chdir: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}"
     ignore_errors: yes
