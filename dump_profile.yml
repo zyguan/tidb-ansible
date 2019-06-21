@@ -3,75 +3,68 @@
 - hosts: localhost
   connection: local
   gather_facts: false
+  tags:
+  - always
   tasks:
   - name: get datetime
-    command: "date +%m%d%H%M"
+    command: "date +%m%d%H%M%z"
     register: datetime
   - name: create output directory
     file: path=profile_out state=directory
 
-- hosts: tikv_servers:tidb_servers
+- hosts: tikv_servers
+  tags:
+  - tikv
   tasks:
   - setup:
+  - set_fact:
+      job_id: "{{ hostvars['localhost'].datetime.stdout }}"
   - name: create directory for saving profile data
-    file: "path=/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }} state=directory"
-
-- hosts: tikv_servers
-  tasks:
-  - name: get flamegraph
-    git:
-      repo: 'https://github.com/brendangregg/FlameGraph'
-      dest: /tmp/fg
-      update: no
-  - name: get fold-tikv-threads-perf
-    get_url:
-      url: https://raw.githubusercontent.com/pingcap/tidb-inspect-tools/master/tracing_tools/perf/fold-tikv-threads-perf.pl
-      timeout: 30
-      dest: /tmp/fg/fold-tikv-threads-perf.pl
-      mode: 0755
+    file: "path=/tmp/profile_{{ inventory_hostname }}_{{ job_id }} state=directory"
   - name: perf tikv-server
     shell: |
-      perf record -F 99 -g $(pgrep -u $(whoami) tikv-server | awk '{print "-p "$1;}') -o tikv_perf.data -- sleep 90
-      perf script -i tikv_perf.data | /tmp/fg/fold-tikv-threads-perf.pl > tikv_perf.script
-      /tmp/fg/stackcollapse-perf.pl tikv_perf.script | /tmp/fg/flamegraph.pl > tikv_perf.svg
+      perf record -F 99 -g $(pgrep -u $(whoami) tikv-server | awk '{print "-p "$1;}') -o tikv_perf.data -- sleep {{ tikv_profile_duration | default(90) }}
+      perf script -i tikv_perf.data | {{ deploy_dir }}/perf/tidb-inspect-tools/tracing_tools/perf/fold-tikv-threads-perf.pl > tikv_perf.script
+      {{ deploy_dir }}/perf/flamegraph/stackcollapse-perf.pl tikv_perf.script | {{ deploy_dir }}/perf/flamegraph/flamegraph.pl > tikv_perf.svg
     args:
-      chdir: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}"
+      chdir: "/tmp/profile_{{ inventory_hostname }}_{{ job_id }}"
     ignore_errors: yes
-
-- hosts: tidb_servers
-  tasks:
-  - name: get tidb debug
-    get_url:
-      url: http://0.0.0.0:{{ tidb_status_port }}/debug/zip
-      timeout: 60
-      force: yes
-      dest: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}/tidb_debug.zip"
-    ignore_errors: yes
-
-- hosts: tikv_servers
-  tasks:
   - local_action:
       module: file
-      path: "profile_out/{{ hostvars['localhost'].datetime.stdout }}/tikv_{{ inventory_hostname }}"
+      path: "profile_out/{{ out_prefix | default('') }}{{ job_id }}/tikv_{{ inventory_hostname }}"
       state: directory
   - name: collect profiles
     synchronize:
       mode: pull
-      src: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}/"
-      dest: "profile_out/{{ hostvars['localhost'].datetime.stdout }}/tikv_{{ inventory_hostname }}/"
+      src: "/tmp/profile_{{ inventory_hostname }}_{{ job_id }}/"
+      dest: "profile_out/{{ out_prefix | default('') }}{{ job_id }}/tikv_{{ inventory_hostname }}/"
       delete: yes
     ignore_errors: yes
 
 - hosts: tidb_servers
+  tags:
+  - tidb
   tasks:
+  - setup:
+  - set_fact:
+      job_id: "{{ hostvars['localhost'].datetime.stdout }}"
+  - name: create directory for saving profile data
+    file: "path=/tmp/profile_{{ inventory_hostname }}_{{ job_id }} state=directory"
+  - name: get tidb debug
+    get_url:
+      url: http://0.0.0.0:{{ tidb_status_port }}/debug/zip?seconds={{ tidb_profile_duration | default(30) }}
+      timeout: "{{ (tidb_profile_duration | default(30) | int) + 30 }}"
+      force: yes
+      dest: "/tmp/profile_{{ inventory_hostname }}_{{ job_id }}/tidb_debug.zip"
+    ignore_errors: yes
   - local_action:
       module: file
-      path: "profile_out/{{ hostvars['localhost'].datetime.stdout }}/tidb_{{ inventory_hostname }}"
+      path: "profile_out/{{ out_prefix | default('') }}{{ job_id }}/tidb_{{ inventory_hostname }}"
       state: directory
   - name: collect profiles
     synchronize:
       mode: pull
-      src: "/tmp/profile_{{ inventory_hostname }}_{{ hostvars['localhost'].datetime.stdout }}/"
-      dest: "profile_out/{{ hostvars['localhost'].datetime.stdout }}/tidb_{{ inventory_hostname }}/"
+      src: "/tmp/profile_{{ inventory_hostname }}_{{ job_id }}/"
+      dest: "profile_out/{{ out_prefix | default('') }}{{ job_id }}/tidb_{{ inventory_hostname }}/"
       delete: yes
     ignore_errors: yes
