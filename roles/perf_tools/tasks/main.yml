@@ -10,3 +10,39 @@
   with_items:
     - iosnoop
     - funcslower
+
+- name: install basic packages
+  become: yes
+  package:
+    name: "{{ packages }}"
+    state: present
+    update_cache: no
+  vars:
+    packages:
+    - git
+    - wget
+    - lsof
+    - perf
+    - iotop
+    - dstat
+    - sysstat
+    - tcpdump
+    - numactl
+    - yum-utils
+    - bind-utils
+    - bash-completion
+
+- name: create directory for tools
+  file:
+    path: "{{ perf_tools_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: install perf tools
+  git:
+    repo: "{{ item.repo }}"
+    dest: "{{ perf_tools_dir }}/{{ item.dir }}"
+  with_items:
+  - { repo: 'https://github.com/brendangregg/perf-tools.git', dir: 'perf-tools' }
+  - { repo: 'https://github.com/brendangregg/FlameGraph.git', dir: 'flamegraph' }
+  - { repo: 'https://github.com/pingcap/tidb-inspect-tools.git', dir: 'tidb-inspect-tools' }
