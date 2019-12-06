@@ -18,7 +18,7 @@ security:
   # key-path: ""
 
 log:
-  #level: "info"
+  level: "error"
 
   # log format, one of json, text, console
   # format: "text"

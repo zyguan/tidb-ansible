@@ -42,7 +42,7 @@ global:
 
 log:
   # Log level: debug, info, warn, error, fatal.
-  # level: "info"
+  level: "error"
 
   # Log format, one of json, text, console.
   # format: "text"
@@ -141,7 +141,7 @@ proxy_protocol:
   # header-timeout: 5
 
 prepared_plan_cache:
-  # enabled: false
+  enabled: true
   # capacity: 100
   # memory-guard-ratio: 0.1
 
