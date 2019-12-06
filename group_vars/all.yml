@@ -50,5 +50,5 @@ pump_cert_dir: "{{ deploy_dir }}/conf/ssl"
 drainer_port: 8249
 
 # sysbench
-prewarm_before_bench: True
+prewarm_before_bench: False
 compact_before_bench: False

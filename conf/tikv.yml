@@ -11,7 +11,7 @@
 global:
   ## Log levels: trace, debug, info, warning, error, critical.
   ## Note that `debug` and `trace` are only available in development builds.
-  # log-level: "info"
+  log-level: "error"
 
   ## Timespan between rotating the log files.
   ## Once this timespan passes, log files will be rotated, i.e. existing log file will have a
@@ -137,7 +137,7 @@ storage:
     ##
     ## To deploy multiple TiKV nodes on a single physical machine, configure this parameter
     ## explicitly. Otherwise, the OOM problem might occur in TiKV.
-    # capacity: "1GB"
+    capacity: "20GiB"
 
 pd:
   ## PD endpoints.

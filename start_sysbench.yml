@@ -67,6 +67,7 @@
           --mysql-port={{ mysql_port }} \
           --mysql-user={{ mysql_user }} \
           --mysql-password={{ mysql_password }} \
+          --mysql-ignore-errors=all \
           run --tables={{ oltp_tables }} --table-size={{ oltp_table_size }}
 
         EOF

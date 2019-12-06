@@ -29,7 +29,7 @@ global:
 
 log:
   # Log level: debug, info, warn, error, fatal.
-  # level: "info"
+  level: "error"
 
   # Queries with execution time greater than this value will be logged. (Milliseconds)
   # slow-threshold: 300
@@ -67,7 +67,7 @@ performance:
 proxy_protocol:
 
 prepared_plan_cache:
-  # enabled: false
+  enabled: true
   # capacity: 100
   # memory-guard-ratio: 0.1
 

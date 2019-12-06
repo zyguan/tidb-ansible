@@ -8,7 +8,7 @@ global:
 security:
 
 log:
-  #level: "info"
+  level: "error"
 
   # file logging
   file:
